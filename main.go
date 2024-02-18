@@ -10,15 +10,14 @@ import (
 	"github.com/ranjitmahadik/bloom-filters/core"
 )
 
-func generateDataset(size int, wg *sync.WaitGroup, data chan []string) {
-	defer wg.Done()
-	dataset := []string{}
-	for i := 0; i <= int(size); i++ {
+func generateDataset(size int, data chan<- []string) {
+	defer close(data)
+	dataset := make([]string, size)
+	for i := 0; i < int(size); i++ {
 		id := uuid.New()
-		dataset = append(dataset, id.String())
+		dataset[i] = id.String()
 	}
 	data <- dataset
-	close(data)
 }
 
 func errorRateForRedis(trainDS, testDS []string, wg *sync.WaitGroup) {
@@ -76,19 +75,17 @@ func errorRateForCustomBF(trainDS, testDS []string, wg *sync.WaitGroup) {
 }
 
 func main() {
-	wg := sync.WaitGroup{}
 
 	dataSetSize := 10_00_000 // 1 Million Users
 	trainDSChan := make(chan []string)
 	testDSChan := make(chan []string)
-	wg.Add(2)
-	go generateDataset(dataSetSize, &wg, trainDSChan)
-	go generateDataset(dataSetSize, &wg, testDSChan)
+	go generateDataset(dataSetSize, trainDSChan)
+	go generateDataset(dataSetSize, testDSChan)
 
 	trainDs := <-trainDSChan
 	testDs := <-testDSChan
-	wg.Wait()
 
+	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go errorRateForRedis(trainDs, testDs, &wg)
 	go errorRateForCustomBF(trainDs, testDs, &wg)
