@@ -2,6 +2,10 @@ build:
 	@go build -o ./cmd/bloom
 
 run: build
-	docker compose down
-	docker compose up -d
+	@docker compose up -d
 	@./cmd/bloom
+	@make cleanup
+
+cleanup:
+	@docker compose down
+	@rm -rf ./cmd
