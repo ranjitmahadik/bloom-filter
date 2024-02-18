@@ -10,18 +10,18 @@ import (
 	"github.com/ranjitmahadik/bloom-filters/core"
 )
 
-func generateDataset(size int, train bool) ([]string, map[string]bool) {
+func generateDataset(size int, wg *sync.WaitGroup, data chan []string) {
+	defer wg.Done()
 	dataset := []string{}
-	lookup := map[string]bool{}
 	for i := 0; i <= int(size); i++ {
 		id := uuid.New()
 		dataset = append(dataset, id.String())
-		lookup[id.String()] = train
 	}
-	return dataset, lookup
+	data <- dataset
+	close(data)
 }
 
-func erroRateForRedis(trainDS, testDS []string, wg *sync.WaitGroup) {
+func errorRateForRedis(trainDS, testDS []string, wg *sync.WaitGroup) {
 	redisClient := redisbloom.NewClient("localhost:6379", "", nil)
 	defer wg.Done()
 
@@ -42,11 +42,10 @@ func erroRateForRedis(trainDS, testDS []string, wg *sync.WaitGroup) {
 			falsePositives++
 		}
 	}
-
 	fmt.Println("error rate redis : ", falsePositives)
 }
 
-func erroRateForCustomBF(trainDS, testDS []string, wg *sync.WaitGroup) {
+func errorRateForCustomBF(trainDS, testDS []string, wg *sync.WaitGroup) {
 	bloomOptions, err := core.NewBloomOptions([]string{"0.01", "10000000"}, false)
 	defer wg.Done()
 	if err != nil {
@@ -73,21 +72,26 @@ func erroRateForCustomBF(trainDS, testDS []string, wg *sync.WaitGroup) {
 			falsePositives++
 		}
 	}
-
 	fmt.Println("error rate custom : ", falsePositives)
 }
 
 func main() {
-	dataSetSize := 10_00_000 // 1 Million Users
-	trainDs, _ := generateDataset(dataSetSize, true)
-	testDs, _ := generateDataset(dataSetSize, false)
-
 	wg := sync.WaitGroup{}
+
+	dataSetSize := 10_00_000 // 1 Million Users
+	trainDSChan := make(chan []string)
+	testDSChan := make(chan []string)
 	wg.Add(2)
+	go generateDataset(dataSetSize, &wg, trainDSChan)
+	go generateDataset(dataSetSize, &wg, testDSChan)
 
-	go erroRateForRedis(trainDs, testDs, &wg)
-	go erroRateForCustomBF(trainDs, testDs, &wg)
+	trainDs := <-trainDSChan
+	testDs := <-testDSChan
+	wg.Wait()
 
+	wg.Add(2)
+	go errorRateForRedis(trainDs, testDs, &wg)
+	go errorRateForCustomBF(trainDs, testDs, &wg)
 	wg.Wait()
 
 }
