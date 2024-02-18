@@ -22,7 +22,7 @@ To get started, follow these steps:
    make run
 
 **Usage**
-Here's how you can use the Bloom filter in your Go code:
+Here's how you can use the Bloom filter.
 1. Initialize the Bloom filter options with the desired error rate and capacity:
 ```go
   bloomOptions, err := core.NewBloomOptions([]string{"0.01", "10000000"}, false)
