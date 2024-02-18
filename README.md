@@ -21,7 +21,7 @@ To get started, follow these steps:
    ```bash
    make run
 
-**Usage**
+## **Usage**
 Here's how you can use the Bloom filter.
 1. Initialize the Bloom filter options with the desired error rate and capacity:
 ```go
