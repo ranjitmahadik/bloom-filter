@@ -13,5 +13,5 @@ func isBitSet(arr []byte, val uint64) bool {
 	if idx >= uint64(len(arr)) {
 		return false
 	}
-	return arr[idx]&(1<<offset) == (1 << offset)
+	return (arr[idx]&(1<<offset)&(1<<offset) > 0)
 }
